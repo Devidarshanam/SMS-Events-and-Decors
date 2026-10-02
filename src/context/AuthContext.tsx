@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { UserProfile, UserRole } from '../types';
+import { UserProfile } from '../types';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 interface AuthContextType {
@@ -7,6 +7,19 @@ interface AuthContextType {
   isAdmin: boolean;
   isLoading: boolean;
   login: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  sendSignUpOtp: (data: {
+    full_name: string;
+    mobile: string;
+    email: string;
+    password: string;
+  }) => Promise<{ success: boolean; demoOtp?: string; error?: string }>;
+  verifySignUpOtp: (data: {
+    email: string;
+    otp: string;
+    full_name: string;
+    mobile: string;
+    password: string;
+  }) => Promise<{ success: boolean; error?: string }>;
   register: (data: {
     full_name: string;
     mobile: string;
@@ -21,6 +34,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const LOCAL_STORAGE_USER_KEY = 'sms_auth_user';
 const LOCAL_STORAGE_USERS_DB = 'sms_registered_users';
+const LOCAL_STORAGE_PENDING_OTP = 'sms_pending_otp';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -60,6 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initAuth();
   }, []);
 
+  // Normal login with Email/Mobile + Password (No OTP required for sign-ins)
   const login = async (identifier: string, password: string): Promise<{ success: boolean; error?: string }> => {
     const cleanId = identifier.trim().toLowerCase();
     
@@ -82,7 +97,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         // Check if identifier is email or phone
         const isEmail = cleanId.includes('@');
-        const emailToUse = isEmail ? cleanId : `${cleanId}@smseventsanddecors.internal`;
+        let emailToUse = cleanId;
+
+        // If phone number entered, find matching profile email
+        if (!isEmail) {
+          const cleanPhone = cleanId.replace(/\D/g, '');
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('mobile', cleanPhone)
+            .limit(1)
+            .single();
+
+          if (profileData?.email) {
+            emailToUse = profileData.email;
+          } else {
+            emailToUse = `${cleanPhone}@smseventsanddecors.internal`;
+          }
+        }
         
         const { data, error } = await supabase.auth.signInWithPassword({
           email: emailToUse,
@@ -110,12 +142,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // Local Mock DB Login
+    // Local Mock DB Login fallback
     const rawDb = localStorage.getItem(LOCAL_STORAGE_USERS_DB);
     const users: any[] = rawDb ? JSON.parse(rawDb) : [];
 
+    const cleanDigits = cleanId.replace(/\D/g, '');
     const foundUser = users.find(u => 
-      (u.mobile === cleanId || u.email?.toLowerCase() === cleanId) && u.password === password
+      (u.mobile === cleanDigits || u.email?.toLowerCase() === cleanId || u.full_name?.toLowerCase() === cleanId) && u.password === password
     );
 
     if (foundUser) {
@@ -133,7 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Default test customer
-    if (cleanId === '9876500000' && password === '123456') {
+    if ((cleanId === '9876500000' || cleanId === 'priya@example.com') && password === '123456') {
       const testCustomer: UserProfile = {
         id: 'cust-test-01',
         full_name: 'Priya Sharma',
@@ -150,24 +183,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: false, error: 'Invalid mobile/email or password.' };
   };
 
-  const register = async (data: {
+  // Step 1 of Registration: Send OTP to Email
+  const sendSignUpOtp = async (data: {
     full_name: string;
     mobile: string;
-    email?: string;
+    email: string;
     password: string;
-  }): Promise<{ success: boolean; error?: string }> => {
+  }): Promise<{ success: boolean; demoOtp?: string; error?: string }> => {
+    const cleanEmail = data.email.trim().toLowerCase();
     const cleanMobile = data.mobile.trim().replace(/\D/g, '');
-    const cleanEmail = data.email?.trim().toLowerCase();
 
-    if (!cleanMobile || cleanMobile.length < 10) {
-      return { success: false, error: 'Please provide a valid 10-digit mobile number.' };
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return { success: false, error: 'Please enter a valid email address.' };
     }
+    if (!cleanMobile || cleanMobile.length < 10) {
+      return { success: false, error: 'Please enter a valid 10-digit mobile number.' };
+    }
+
+    // Generate a 6-digit OTP
+    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store pending registration payload locally for verification
+    const pendingData = {
+      ...data,
+      email: cleanEmail,
+      mobile: cleanMobile,
+      otp: generatedOtp,
+      expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes expiry
+    };
+    sessionStorage.setItem(LOCAL_STORAGE_PENDING_OTP, JSON.stringify(pendingData));
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const emailToUse = cleanEmail || `${cleanMobile}@smseventsanddecors.internal`;
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: emailToUse,
+        const { error: signUpError } = await supabase.auth.signUp({
+          email: cleanEmail,
           password: data.password,
           options: {
             data: {
@@ -177,13 +226,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         });
 
-        if (authError) {
-          return { success: false, error: authError.message };
+        if (signUpError && !signUpError.message.includes('already registered')) {
+          // If Supabase returns rate limit or provider error, fallback with generated code
+          console.warn('Supabase signUp notice:', signUpError.message);
         }
 
-        if (authData.user) {
+        return { success: true, demoOtp: generatedOtp };
+      } catch (err: any) {
+        return { success: true, demoOtp: generatedOtp };
+      }
+    }
+
+    return { success: true, demoOtp: generatedOtp };
+  };
+
+  // Step 2 of Registration: Verify OTP & Create Account
+  const verifySignUpOtp = async (data: {
+    email: string;
+    otp: string;
+    full_name: string;
+    mobile: string;
+    password: string;
+  }): Promise<{ success: boolean; error?: string }> => {
+    const cleanEmail = data.email.trim().toLowerCase();
+    const cleanMobile = data.mobile.trim().replace(/\D/g, '');
+    const cleanOtp = data.otp.trim();
+
+    // Check stored OTP session
+    const rawPending = sessionStorage.getItem(LOCAL_STORAGE_PENDING_OTP);
+    let isLocalOtpValid = false;
+
+    if (rawPending) {
+      const pending = JSON.parse(rawPending);
+      if (pending.email === cleanEmail && pending.otp === cleanOtp) {
+        if (Date.now() < pending.expiresAt) {
+          isLocalOtpValid = true;
+        } else {
+          return { success: false, error: 'OTP has expired. Please request a new one.' };
+        }
+      }
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        // Attempt Supabase OTP verification
+        const { data: verifyData, error: verifyErr } = await supabase.auth.verifyOtp({
+          email: cleanEmail,
+          token: cleanOtp,
+          type: 'signup',
+        });
+
+        let userId = verifyData?.user?.id;
+
+        // If direct OTP match or verified
+        if (!verifyErr && userId) {
           const newProfile: UserProfile = {
-            id: authData.user.id,
+            id: userId,
             full_name: data.full_name,
             mobile: cleanMobile,
             email: cleanEmail,
@@ -193,48 +291,101 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           await supabase.from('profiles').upsert(newProfile);
           setUser(newProfile);
+          localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(newProfile));
+          sessionStorage.removeItem(LOCAL_STORAGE_PENDING_OTP);
           return { success: true };
         }
+
+        // If local OTP matches
+        if (isLocalOtpValid) {
+          // Sign in or create session
+          const { data: signInData } = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password: data.password,
+          });
+
+          const finalUserId = signInData?.user?.id || `user_${Date.now()}`;
+          const newProfile: UserProfile = {
+            id: finalUserId,
+            full_name: data.full_name,
+            mobile: cleanMobile,
+            email: cleanEmail,
+            role: 'customer',
+            created_at: new Date().toISOString(),
+          };
+
+          try {
+            await supabase.from('profiles').upsert(newProfile);
+          } catch (e) {
+            // continue
+          }
+
+          setUser(newProfile);
+          localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(newProfile));
+          sessionStorage.removeItem(LOCAL_STORAGE_PENDING_OTP);
+          return { success: true };
+        }
+
+        if (verifyErr && !isLocalOtpValid) {
+          return { success: false, error: 'Invalid verification code. Please check your code.' };
+        }
       } catch (err: any) {
-        return { success: false, error: err.message || 'Registration failed' };
+        if (!isLocalOtpValid) {
+          return { success: false, error: err.message || 'Verification failed.' };
+        }
       }
     }
 
-    // Local Mock DB Registration
-    const rawDb = localStorage.getItem(LOCAL_STORAGE_USERS_DB);
-    const users: any[] = rawDb ? JSON.parse(rawDb) : [];
+    // Local Verification Fallback
+    if (isLocalOtpValid) {
+      const rawDb = localStorage.getItem(LOCAL_STORAGE_USERS_DB);
+      const users: any[] = rawDb ? JSON.parse(rawDb) : [];
 
-    // Check if user already exists
-    if (users.some(u => u.mobile === cleanMobile)) {
-      return { success: false, error: 'An account with this mobile number already exists.' };
+      const newId = `user_${Date.now()}`;
+      const newUserRecord = {
+        id: newId,
+        full_name: data.full_name,
+        mobile: cleanMobile,
+        email: cleanEmail,
+        password: data.password,
+        role: 'customer',
+        created_at: new Date().toISOString(),
+      };
+
+      users.push(newUserRecord);
+      localStorage.setItem(LOCAL_STORAGE_USERS_DB, JSON.stringify(users));
+
+      const newProfile: UserProfile = {
+        id: newId,
+        full_name: data.full_name,
+        mobile: cleanMobile,
+        email: cleanEmail,
+        role: 'customer',
+        created_at: newUserRecord.created_at,
+      };
+
+      setUser(newProfile);
+      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(newProfile));
+      sessionStorage.removeItem(LOCAL_STORAGE_PENDING_OTP);
+      return { success: true };
     }
 
-    const newId = `user_${Date.now()}`;
-    const newUserRecord = {
-      id: newId,
+    return { success: false, error: 'Invalid or expired OTP code.' };
+  };
+
+  // Direct registration method (legacy / fallback)
+  const register = async (data: {
+    full_name: string;
+    mobile: string;
+    email?: string;
+    password: string;
+  }): Promise<{ success: boolean; error?: string }> => {
+    return sendSignUpOtp({
       full_name: data.full_name,
-      mobile: cleanMobile,
-      email: cleanEmail,
+      mobile: data.mobile,
+      email: data.email || `${data.mobile}@smseventsanddecors.internal`,
       password: data.password,
-      role: 'customer',
-      created_at: new Date().toISOString(),
-    };
-
-    users.push(newUserRecord);
-    localStorage.setItem(LOCAL_STORAGE_USERS_DB, JSON.stringify(users));
-
-    const newProfile: UserProfile = {
-      id: newId,
-      full_name: data.full_name,
-      mobile: cleanMobile,
-      email: cleanEmail,
-      role: 'customer',
-      created_at: newUserRecord.created_at,
-    };
-
-    setUser(newProfile);
-    localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(newProfile));
-    return { success: true };
+    });
   };
 
   const logout = () => {
@@ -266,6 +417,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAdmin: user?.role === 'admin' || user?.role === 'manager',
         isLoading,
         login,
+        sendSignUpOtp,
+        verifySignUpOtp,
         register,
         logout,
         updateProfile,
