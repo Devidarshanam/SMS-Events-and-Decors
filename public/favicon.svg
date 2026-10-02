@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E5CD87"/>
+      <stop offset="50%" stop-color="#C5A880"/>
+      <stop offset="100%" stop-color="#947348"/>
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="24" fill="#141414"/>
+  <rect x="6" y="6" width="88" height="88" rx="18" fill="none" stroke="url(#goldGrad)" stroke-width="2" stroke-opacity="0.6"/>
+  <path d="M30 36 C30 28, 42 28, 48 34 C54 40, 68 40, 68 50 C68 62, 52 64, 46 58" fill="none" stroke="url(#goldGrad)" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M32 66 L68 66" stroke="url(#goldGrad)" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="70" cy="30" r="3" fill="#E5CD87"/>
+  <circle cx="30" cy="70" r="2.5" fill="#E5CD87"/>
+  <text x="50" y="85" text-anchor="middle" font-family="'Playfair Display', serif" font-size="11" font-weight="700" fill="#FAF7F2" letter-spacing="2">SMS</text>
+</svg>
