@@ -88,10 +88,12 @@ export const ContactPage: React.FC = () => {
               <div className="flex items-start gap-3">
                 <Phone className="w-5 h-5 text-gold-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-bold text-charcoal-900">Direct Phone:</p>
-                  <a href={`tel:${siteSettings.contact_phone}`} className="text-gold-800 font-semibold hover:underline">
-                    {siteSettings.contact_phone}
-                  </a>
+                  <p className="font-bold text-charcoal-900">Direct Phone & WhatsApp:</p>
+                  <div className="flex flex-wrap gap-x-2 text-gold-800 font-semibold">
+                    <a href="tel:+917995644101" className="hover:underline">+91 79956 44101</a>
+                    <span>•</span>
+                    <a href="tel:+919912388101" className="hover:underline">+91 99123 88101</a>
+                  </div>
                 </div>
               </div>
 
