@@ -19,9 +19,9 @@ export const CustomerDashboard: React.FC = () => {
   const { user } = useAuth();
   const { events, leads, quotes, savedDesigns, siteSettings } = useStore();
 
-  const userEvents = events.filter(e => e.customer_id === user?.id || e.customer_id === 'cust-test-01');
-  const userLeads = leads.filter(l => l.customer_id === user?.id || l.mobile === user?.mobile);
-  const userQuotes = quotes.filter(q => q.customer_id === user?.id || q.customer_mobile === user?.mobile);
+  const userEvents = events.filter(e => (user?.id && e.customer_id === user.id) || (user?.mobile && e.customer_mobile === user.mobile));
+  const userLeads = leads.filter(l => (user?.id && l.customer_id === user.id) || (user?.mobile && l.mobile === user.mobile) || (user?.email && l.email?.toLowerCase() === user.email.toLowerCase()));
+  const userQuotes = quotes.filter(q => (user?.id && q.customer_id === user.id) || (user?.mobile && q.customer_mobile === user.mobile) || (user?.email && q.customer_email?.toLowerCase() === user.email.toLowerCase()));
 
   const upcomingEvent = userEvents[0];
   const activeQuote = userQuotes[0];
@@ -183,6 +183,38 @@ export const CustomerDashboard: React.FC = () => {
           )}
         </div>
 
+      </div>
+
+      {/* Direct Contact Organizer Card */}
+      <div className="bg-charcoal-950 text-ivory-50 rounded-3xl p-6 sm:p-8 border border-gold-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl">
+        <div>
+          <span className="text-xs font-bold uppercase tracking-widest text-gold-400">Direct Event Support</span>
+          <h3 className="font-serif text-xl sm:text-2xl font-bold mt-1">
+            Need Help or Custom Styling for Your Celebration?
+          </h3>
+          <p className="text-xs sm:text-sm text-charcoal-400 mt-1">
+            Connect directly with your lead event decorator for venue walkthroughs, stage customization, and date booking.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-3 shrink-0">
+          <a
+            href="tel:+917995644101"
+            className="px-5 py-3 rounded-full bg-gold-500 hover:bg-gold-400 text-charcoal-950 text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-gold-glow transition-all"
+          >
+            <PhoneCall className="w-4 h-4" />
+            <span>Call +91 79956 44101</span>
+          </a>
+          <a
+            href="https://wa.me/917995644101?text=Hi%20SMS%20Events,%20I%20am%20logged%20in%20to%20my%20customer%20dashboard%20and%20would%20like%20to%20discuss%20my%20celebration%20decor."
+            target="_blank"
+            rel="noreferrer"
+            className="px-5 py-3 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-md transition-all"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>WhatsApp Organizer</span>
+          </a>
+        </div>
       </div>
 
     </div>

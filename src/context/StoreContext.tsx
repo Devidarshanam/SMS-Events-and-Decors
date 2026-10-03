@@ -219,25 +219,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [events, setEvents] = useState<ConfirmedEvent[]>(() => {
     const saved = localStorage.getItem('sms_events');
-    if (saved) return JSON.parse(saved);
-    return [
-      {
-        id: 'event-1',
-        customer_id: 'cust-test-01',
-        title: 'Priya & Vikram Grand Engagement',
-        event_type: 'Engagement',
-        event_date: '2026-12-15',
-        venue: 'Grand Ball Room, Novotel Hitec City',
-        city: 'Hyderabad',
-        status: 'Confirmed',
-        payment_status: 'Advance Paid',
-        total_budget: 58000,
-        requirements: 'Royal floral stage with gold ring photo booth.',
-        team_notes: 'Setup team arrives at venue by 10:00 AM on 15th Dec. Lead: Ravi.',
-        created_at: '2026-09-22T10:00:00Z',
-        updated_at: '2026-09-22T10:00:00Z',
-      }
-    ];
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [savedDesigns, setSavedDesigns] = useState<SavedDesignItem[]>(() => {

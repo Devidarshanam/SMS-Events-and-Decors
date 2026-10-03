@@ -7,9 +7,9 @@ export const MyQuotesPage: React.FC = () => {
   const { user } = useAuth();
   const { quotes, siteSettings } = useStore();
 
-  const userQuotes = quotes.filter(q => q.customer_id === user?.id || q.customer_mobile === user?.mobile);
+  const userQuotes = quotes.filter(q => (user?.id && q.customer_id === user.id) || (user?.mobile && q.customer_mobile === user.mobile) || (user?.email && q.customer_email?.toLowerCase() === user.email.toLowerCase()));
 
-  const cleanNumber = (siteSettings.contact_whatsapp || '919876543210').replace(/\D/g, '');
+  const cleanNumber = (siteSettings.contact_whatsapp || '917995644101').replace(/\D/g, '');
 
   return (
     <div className="space-y-6">

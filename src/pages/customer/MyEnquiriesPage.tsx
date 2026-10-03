@@ -8,7 +8,7 @@ export const MyEnquiriesPage: React.FC = () => {
   const { user } = useAuth();
   const { leads, siteSettings } = useStore();
 
-  const userLeads = leads.filter(l => l.customer_id === user?.id || l.mobile === user?.mobile);
+  const userLeads = leads.filter(l => (user?.id && l.customer_id === user.id) || (user?.mobile && l.mobile === user.mobile) || (user?.email && l.email?.toLowerCase() === user.email.toLowerCase()));
 
   const getStatusBadge = (status: string) => {
     switch (status) {

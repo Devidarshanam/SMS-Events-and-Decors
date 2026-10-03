@@ -8,7 +8,7 @@ export const MyEventsPage: React.FC = () => {
   const { user } = useAuth();
   const { events, siteSettings } = useStore();
 
-  const userEvents = events.filter(e => e.customer_id === user?.id || e.customer_id === 'cust-test-01');
+  const userEvents = events.filter(e => (user?.id && e.customer_id === user.id) || (user?.mobile && e.customer_mobile === user.mobile));
 
   return (
     <div className="space-y-6">
