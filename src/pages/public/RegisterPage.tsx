@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Sparkles, ArrowRight, AlertCircle, CheckCircle, Mail, KeyRound, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Sparkles, ArrowRight, AlertCircle, CheckCircle, Mail, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const RegisterPage: React.FC = () => {
@@ -13,7 +13,6 @@ export const RegisterPage: React.FC = () => {
   
   // OTP state
   const [otp, setOtp] = useState('');
-  const [demoCodeNotice, setDemoCodeNotice] = useState<string | null>(null);
   const [resendTimer, setResendTimer] = useState(45);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,9 +68,6 @@ export const RegisterPage: React.FC = () => {
       if (res.success) {
         setStep('otp');
         setResendTimer(45);
-        if (res.demoOtp) {
-          setDemoCodeNotice(res.demoOtp);
-        }
       } else {
         setError(res.error || 'Failed to send verification code.');
       }
@@ -88,7 +84,7 @@ export const RegisterPage: React.FC = () => {
     setError('');
 
     if (!otp || otp.trim().length < 6) {
-      setError('Please enter the complete 6-digit OTP code.');
+      setError('Please enter the complete 6-digit OTP code received in your email.');
       return;
     }
 
@@ -105,7 +101,7 @@ export const RegisterPage: React.FC = () => {
       if (res.success) {
         navigate('/dashboard');
       } else {
-        setError(res.error || 'Invalid OTP code.');
+        setError(res.error || 'Invalid verification code. Please check your email and try again.');
       }
     } catch (err: any) {
       setError(err.message || 'Verification failed.');
@@ -128,9 +124,6 @@ export const RegisterPage: React.FC = () => {
       });
       if (res.success) {
         setResendTimer(45);
-        if (res.demoOtp) {
-          setDemoCodeNotice(res.demoOtp);
-        }
       } else {
         setError(res.error || 'Failed to resend code.');
       }
@@ -151,7 +144,7 @@ export const RegisterPage: React.FC = () => {
             SMS
           </div>
           <h1 className="font-serif text-3xl font-bold text-charcoal-900">
-            {step === 'details' ? 'Create Account' : 'Verify Your Email'}
+            {step === 'details' ? 'Create Account' : 'Check Your Email'}
           </h1>
           <p className="text-xs text-charcoal-500 mt-1">
             {step === 'details' 
@@ -164,22 +157,6 @@ export const RegisterPage: React.FC = () => {
           <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
-          </div>
-        )}
-
-        {demoCodeNotice && step === 'otp' && (
-          <div className="p-3 rounded-xl bg-gold-50 border border-gold-300 text-gold-900 text-xs flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <KeyRound className="w-4 h-4 text-gold-700 shrink-0" />
-              <span>Verification OTP: <strong className="font-mono text-sm tracking-wider">{demoCodeNotice}</strong></span>
-            </div>
-            <button 
-              type="button" 
-              onClick={() => setOtp(demoCodeNotice)}
-              className="text-[11px] font-bold underline text-gold-800 hover:text-gold-950"
-            >
-              Auto-Fill
-            </button>
           </div>
         )}
 
@@ -273,13 +250,14 @@ export const RegisterPage: React.FC = () => {
           <form onSubmit={handleVerifyOtp} className="space-y-5">
             <div>
               <label className="block text-xs font-bold text-charcoal-700 uppercase tracking-wider mb-2 text-center">
-                Enter 6-Digit Verification Code
+                Enter 6-Digit Code from your Email
               </label>
               <input
                 type="text"
                 required
                 maxLength={6}
-                placeholder="0 0 0 0 0 0"
+                autoFocus
+                placeholder="• • • • • •"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                 className="w-full px-4 py-3.5 text-center font-mono text-2xl tracking-[0.4em] font-bold rounded-2xl border-2 border-gold-400 bg-ivory-50 text-charcoal-950 focus:outline-none focus:ring-2 focus:ring-gold-500/30"
@@ -292,7 +270,7 @@ export const RegisterPage: React.FC = () => {
               className="w-full py-3.5 rounded-full bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-charcoal-950 font-bold text-xs uppercase tracking-wider shadow-gold-glow flex items-center justify-center gap-2 transition-all disabled:opacity-50"
             >
               <CheckCircle className="w-4 h-4" />
-              <span>{isSubmitting ? 'Verifying...' : 'Verify & Create Account'}</span>
+              <span>{isSubmitting ? 'Verifying...' : 'Verify OTP & Create Account'}</span>
             </button>
 
             <div className="flex items-center justify-between text-xs text-charcoal-600 pt-2 border-t border-ivory-200">

@@ -215,10 +215,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const { error: signUpError } = await supabase.auth.signUp({
+        // Use Supabase native OTP delivery
+        const { error: otpError } = await supabase.auth.signInWithOtp({
           email: cleanEmail,
-          password: data.password,
           options: {
+            shouldCreateUser: true,
             data: {
               full_name: data.full_name,
               mobile: cleanMobile,
@@ -226,18 +227,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         });
 
-        if (signUpError && !signUpError.message.includes('already registered')) {
-          // If Supabase returns rate limit or provider error, fallback with generated code
-          console.warn('Supabase signUp notice:', signUpError.message);
+        if (otpError) {
+          // If already registered or other notice, attempt standard signup
+          await supabase.auth.signUp({
+            email: cleanEmail,
+            password: data.password,
+            options: {
+              data: {
+                full_name: data.full_name,
+                mobile: cleanMobile,
+              }
+            }
+          });
         }
 
-        return { success: true, demoOtp: generatedOtp };
+        return { success: true };
       } catch (err: any) {
-        return { success: true, demoOtp: generatedOtp };
+        return { success: true };
       }
     }
 
-    return { success: true, demoOtp: generatedOtp };
+    return { success: true };
   };
 
   // Step 2 of Registration: Verify OTP & Create Account
@@ -252,34 +262,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanMobile = data.mobile.trim().replace(/\D/g, '');
     const cleanOtp = data.otp.trim();
 
-    // Check stored OTP session
-    const rawPending = sessionStorage.getItem(LOCAL_STORAGE_PENDING_OTP);
-    let isLocalOtpValid = false;
-
-    if (rawPending) {
-      const pending = JSON.parse(rawPending);
-      if (pending.email === cleanEmail && pending.otp === cleanOtp) {
-        if (Date.now() < pending.expiresAt) {
-          isLocalOtpValid = true;
-        } else {
-          return { success: false, error: 'OTP has expired. Please request a new one.' };
-        }
-      }
-    }
-
     if (isSupabaseConfigured && supabase) {
       try {
-        // Attempt Supabase OTP verification
-        const { data: verifyData, error: verifyErr } = await supabase.auth.verifyOtp({
+        // Attempt Supabase OTP verification (email token type first, then signup type)
+        let { data: verifyData, error: verifyErr } = await supabase.auth.verifyOtp({
           email: cleanEmail,
           token: cleanOtp,
-          type: 'signup',
+          type: 'email',
         });
+
+        if (verifyErr) {
+          const signupRes = await supabase.auth.verifyOtp({
+            email: cleanEmail,
+            token: cleanOtp,
+            type: 'signup',
+          });
+          if (!signupRes.error && signupRes.data?.user) {
+            verifyData = signupRes.data;
+            verifyErr = null;
+          }
+        }
 
         let userId = verifyData?.user?.id;
 
-        // If direct OTP match or verified
+        // If verified with Supabase
         if (!verifyErr && userId) {
+          // Set user's password so they can log in with password in future
+          if (data.password) {
+            await supabase.auth.updateUser({ password: data.password });
+          }
+
           const newProfile: UserProfile = {
             id: userId,
             full_name: data.full_name,
@@ -296,43 +308,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return { success: true };
         }
 
-        // If local OTP matches
-        if (isLocalOtpValid) {
-          // Sign in or create session
-          const { data: signInData } = await supabase.auth.signInWithPassword({
-            email: cleanEmail,
-            password: data.password,
-          });
-
-          const finalUserId = signInData?.user?.id || `user_${Date.now()}`;
-          const newProfile: UserProfile = {
-            id: finalUserId,
-            full_name: data.full_name,
-            mobile: cleanMobile,
-            email: cleanEmail,
-            role: 'customer',
-            created_at: new Date().toISOString(),
-          };
-
-          try {
-            await supabase.from('profiles').upsert(newProfile);
-          } catch (e) {
-            // continue
-          }
-
-          setUser(newProfile);
-          localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(newProfile));
-          sessionStorage.removeItem(LOCAL_STORAGE_PENDING_OTP);
-          return { success: true };
-        }
-
-        if (verifyErr && !isLocalOtpValid) {
-          return { success: false, error: 'Invalid verification code. Please check your code.' };
+        if (verifyErr) {
+          return { success: false, error: 'Invalid or expired 6-digit OTP code. Please check your email.' };
         }
       } catch (err: any) {
-        if (!isLocalOtpValid) {
-          return { success: false, error: err.message || 'Verification failed.' };
-        }
+        return { success: false, error: err.message || 'Verification failed.' };
       }
     }
 
