@@ -525,7 +525,7 @@ export const INITIAL_SITE_SETTINGS: SiteSettings = {
   site_name: 'SMS Events and Decors',
   hero_heading: 'We Turn Celebrations Into Experiences.',
   hero_subheading: 'Bespoke decorations for weddings, engagements, birthdays, and unforgettable moments.',
-  service_area: 'Hyderabad & Surrounding Areas',
+  service_area: 'Hyderabad, Telangana & Andhra Pradesh',
   contact_phone: '+91 98765 43210',
   contact_whatsapp: '+919876543210',
   contact_email: 'contact@smseventsanddecors.com',

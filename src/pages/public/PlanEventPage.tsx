@@ -283,12 +283,12 @@ export const PlanEventPage: React.FC = () => {
 
                 <div className="flex flex-wrap gap-2 pt-2">
                   <span className="text-xs text-charcoal-500 font-medium self-center">Popular Locations:</span>
-                  {['Banjara Hills', 'Jubilee Hills', 'Gachibowli', 'Madhapur', 'Hitec City', 'Secunderabad', 'Home Decor'].map((loc) => (
+                  {['Hyderabad', 'Warangal', 'Vijayawada', 'Guntur', 'Khammam', 'Karimnagar', 'Secunderabad', 'Home / Outdoor'].map((loc) => (
                     <button
                       key={loc}
                       type="button"
-                      onClick={() => setVenueLocation(`${loc}, Hyderabad`)}
-                      className="px-3 py-1 rounded-full bg-ivory-100 hover:bg-gold-100 border border-gold-200 text-xs text-charcoal-700"
+                      onClick={() => setVenueLocation(loc.includes('Home') ? loc : `${loc}, Venue / Residence`)}
+                      className="px-3 py-1 rounded-full bg-ivory-100 hover:bg-gold-100 border border-gold-200 text-xs text-charcoal-700 font-medium transition-colors"
                     >
                       + {loc}
                     </button>

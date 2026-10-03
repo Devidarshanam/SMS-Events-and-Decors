@@ -100,16 +100,16 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Col 3: Hyderabad Service Locations */}
+          {/* Col 3: Service Locations */}
           <div>
             <h4 className="font-serif text-base text-gold-300 font-semibold mb-4 tracking-wider uppercase text-xs">
               Service Areas
             </h4>
             <p className="text-xs text-charcoal-400 leading-relaxed mb-3">
-              Serving all prime venues & residences in Hyderabad:
+              Serving premier celebrations across Telangana & Andhra Pradesh:
             </p>
             <div className="flex flex-wrap gap-1.5 text-[11px] text-charcoal-300">
-              {['Banjara Hills', 'Jubilee Hills', 'Gachibowli', 'Madhapur', 'Hitec City', 'Kondapur', 'Begumpet', 'Secunderabad', 'Shamshabad'].map((area) => (
+              {['Hyderabad', 'Warangal', 'Vijayawada', 'Guntur', 'Khammam', 'Karimnagar', 'Nizamabad', 'Visakhapatnam', 'Secunderabad'].map((area) => (
                 <span key={area} className="px-2 py-0.5 rounded bg-charcoal-900 border border-charcoal-800">
                   {area}
                 </span>
