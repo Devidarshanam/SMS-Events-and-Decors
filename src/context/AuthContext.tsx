@@ -138,19 +138,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const isEmail = cleanId.includes('@');
         let emailToUse = cleanId;
 
-        // If phone number entered, find matching profile email
+        // If phone number or name entered, find matching profile email
         if (!isEmail) {
           const cleanPhone = cleanId.replace(/\D/g, '');
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('email')
-            .eq('mobile', cleanPhone)
-            .limit(1)
-            .single();
+          let profileQuery = supabase.from('profiles').select('email');
+
+          if (cleanPhone.length >= 10) {
+            profileQuery = profileQuery.eq('mobile', cleanPhone);
+          } else {
+            profileQuery = profileQuery.ilike('full_name', `%${cleanId}%`);
+          }
+
+          const { data: profileData } = await profileQuery.limit(1).maybeSingle();
 
           if (profileData?.email) {
             emailToUse = profileData.email;
-          } else {
+          } else if (cleanPhone.length >= 10) {
             emailToUse = `${cleanPhone}@smseventsanddecors.internal`;
           }
         }
@@ -161,6 +164,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
 
         if (error) {
+          // If error mentions unconfirmed email, provide clear guidance
+          if (error.message.toLowerCase().includes('email not confirmed')) {
+            return { success: false, error: 'Your email is not confirmed yet. Please confirm your email or contact admin.' };
+          }
           return { success: false, error: error.message };
         }
 
