@@ -125,18 +125,22 @@ export const Footer: React.FC = () => {
             <ul className="space-y-3 text-xs text-charcoal-400">
               <li className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-gold-500 shrink-0 mt-0.5" />
-                <span>{siteSettings.address}</span>
+                <span className="leading-relaxed">
+                  {siteSettings.address || 'Plot No: 141, Vishwakarma Colony, Suraram, Hyderabad, Telangana 500055'}
+                </span>
               </li>
               <li className="flex items-center gap-2.5">
                 <Phone className="w-4 h-4 text-gold-500 shrink-0" />
-                <a href={`tel:${siteSettings.contact_phone}`} className="hover:text-gold-400">
-                  {siteSettings.contact_phone}
-                </a>
+                <div className="flex flex-wrap gap-x-1.5">
+                  <a href="tel:+917995644101" className="hover:text-gold-400 font-semibold text-ivory-100">+91 79956 44101</a>
+                  <span>/</span>
+                  <a href="tel:+919912388101" className="hover:text-gold-400 font-semibold text-ivory-100">+91 99123 88101</a>
+                </div>
               </li>
               <li className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-gold-500 shrink-0" />
-                <a href={`mailto:${siteSettings.contact_email}`} className="hover:text-gold-400">
-                  {siteSettings.contact_email}
+                <a href="mailto:smsevents@gmail.com" className="hover:text-gold-400">
+                  smsevents@gmail.com
                 </a>
               </li>
             </ul>
