@@ -72,8 +72,12 @@ export const RegisterPage: React.FC = () => {
       });
 
       if (res.success) {
-        setStep('sent');
-        setResendTimer(45);
+        if (res.sessionCreated) {
+          navigate('/dashboard');
+        } else {
+          setStep('sent');
+          setResendTimer(45);
+        }
       } else {
         setError(res.error || 'Failed to send verification email.');
       }
