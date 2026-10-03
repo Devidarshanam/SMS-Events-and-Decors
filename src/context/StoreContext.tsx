@@ -246,8 +246,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(() => {
-    const saved = localStorage.getItem('sms_site_settings');
-    return saved ? JSON.parse(saved) : INITIAL_SITE_SETTINGS;
+    const saved = localStorage.getItem('sms_site_settings_v2');
+    return saved ? { ...INITIAL_SITE_SETTINGS, ...JSON.parse(saved) } : INITIAL_SITE_SETTINGS;
   });
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -264,7 +264,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => { localStorage.setItem('sms_quotes', JSON.stringify(quotes)); }, [quotes]);
   useEffect(() => { localStorage.setItem('sms_events', JSON.stringify(events)); }, [events]);
   useEffect(() => { localStorage.setItem('sms_saved_designs', JSON.stringify(savedDesigns)); }, [savedDesigns]);
-  useEffect(() => { localStorage.setItem('sms_site_settings', JSON.stringify(siteSettings)); }, [siteSettings]);
+  useEffect(() => { localStorage.setItem('sms_site_settings_v2', JSON.stringify(siteSettings)); }, [siteSettings]);
 
   // Image Processing & Compression Helper (Supports phone camera capture)
   const processAndUploadImage = async (file: File, bucket: string = 'portfolio'): Promise<string> => {
