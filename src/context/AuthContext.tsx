@@ -55,6 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             if (profile) {
               setUser(profile as UserProfile);
+              localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(profile));
             }
           }
         } else {
@@ -72,6 +73,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     initAuth();
+
+    // Listen to real-time auth changes (e.g. When user clicks email confirmation link)
+    let authListener: any = null;
+    if (isSupabaseConfigured && supabase) {
+      const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (profile) {
+            setUser(profile as UserProfile);
+            localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(profile));
+          } else {
+            const newProfile: UserProfile = {
+              id: session.user.id,
+              full_name: session.user.user_metadata?.full_name || 'Customer',
+              mobile: session.user.user_metadata?.mobile || '',
+              email: session.user.email || '',
+              role: 'customer',
+              created_at: new Date().toISOString(),
+            };
+            try {
+              await supabase.from('profiles').upsert(newProfile);
+            } catch (e) {}
+            setUser(newProfile);
+            localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(newProfile));
+          }
+        }
+      });
+      authListener = data.subscription;
+    }
+
+    return () => {
+      authListener?.unsubscribe();
+    };
   }, []);
 
   // Normal login with Email/Mobile + Password (No OTP required for sign-ins)

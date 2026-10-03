@@ -1,29 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Sparkles, ArrowRight, AlertCircle, CheckCircle, Mail, ArrowLeft } from 'lucide-react';
+import { Sparkles, ArrowRight, AlertCircle, CheckCircle, Mail, ArrowLeft, MailCheck, ExternalLink, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const RegisterPage: React.FC = () => {
-  const [step, setStep] = useState<'details' | 'otp'>('details');
+  const [step, setStep] = useState<'details' | 'sent'>('details');
   const [fullName, setFullName] = useState('');
   const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   
-  // OTP state
-  const [otp, setOtp] = useState('');
   const [resendTimer, setResendTimer] = useState(45);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(false);
 
-  const { sendSignUpOtp, verifySignUpOtp } = useAuth();
+  const { sendSignUpOtp, user } = useAuth();
   const navigate = useNavigate();
 
-  // Countdown timer for OTP resend
+  // If user gets authenticated via email confirmation link, navigate to dashboard automatically
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
+
+  // Countdown timer for email resend
   useEffect(() => {
     let interval: any = null;
-    if (step === 'otp' && resendTimer > 0) {
+    if (step === 'sent' && resendTimer > 0) {
       interval = setInterval(() => {
         setResendTimer((prev) => prev - 1);
       }, 1000);
@@ -31,13 +37,13 @@ export const RegisterPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [step, resendTimer]);
 
-  // Step 1: Submit Details & Request Email OTP
-  const handleRequestOtp = async (e: React.FormEvent) => {
+  // Step 1: Submit Details & Send Verification Email
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     if (!email || !email.includes('@')) {
-      setError('Please enter a valid email address to receive your verification OTP.');
+      setError('Please enter a valid email address.');
       return;
     }
 
@@ -66,52 +72,33 @@ export const RegisterPage: React.FC = () => {
       });
 
       if (res.success) {
-        setStep('otp');
+        setStep('sent');
         setResendTimer(45);
       } else {
-        setError(res.error || 'Failed to send verification code.');
+        setError(res.error || 'Failed to send verification email.');
       }
     } catch (err: any) {
-      setError(err.message || 'Error sending OTP.');
+      setError(err.message || 'Error sending registration request.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Step 2: Verify OTP & Complete Account Creation
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    if (!otp || otp.trim().length < 6) {
-      setError('Please enter the complete 6-digit OTP code received in your email.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const res = await verifySignUpOtp({
-        email,
-        otp: otp.trim(),
-        full_name: fullName,
-        mobile,
-        password,
-      });
-
-      if (res.success) {
-        navigate('/dashboard');
-      } else {
-        setError(res.error || 'Invalid verification code. Please check your email and try again.');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Verification failed.');
-    } finally {
-      setIsSubmitting(false);
+  // Check if user has confirmed and redirect
+  const handleCheckConfirmed = () => {
+    setCheckingSession(true);
+    if (user) {
+      navigate('/dashboard');
+    } else {
+      setTimeout(() => {
+        setCheckingSession(false);
+        setError('Please click the "Confirm email address" link in your email first.');
+      }, 1200);
     }
   };
 
-  // Resend OTP
-  const handleResendOtp = async () => {
+  // Resend Verification Email
+  const handleResend = async () => {
     if (resendTimer > 0) return;
     setError('');
     setIsSubmitting(true);
@@ -125,10 +112,10 @@ export const RegisterPage: React.FC = () => {
       if (res.success) {
         setResendTimer(45);
       } else {
-        setError(res.error || 'Failed to resend code.');
+        setError(res.error || 'Failed to resend email.');
       }
     } catch (err: any) {
-      setError('Error resending OTP.');
+      setError('Error resending email.');
     } finally {
       setIsSubmitting(false);
     }
@@ -144,12 +131,12 @@ export const RegisterPage: React.FC = () => {
             SMS
           </div>
           <h1 className="font-serif text-3xl font-bold text-charcoal-900">
-            {step === 'details' ? 'Create Account' : 'Check Your Email'}
+            {step === 'details' ? 'Create Account' : 'Check Your Inbox'}
           </h1>
           <p className="text-xs text-charcoal-500 mt-1">
             {step === 'details' 
-              ? 'One-time email OTP verification is required only for initial account creation'
-              : `We sent a 6-digit verification code to ${email}`}
+              ? 'Sign up to track quotations, design moodboards, and manage your events'
+              : `We sent an activation link to ${email}`}
           </p>
         </div>
 
@@ -162,7 +149,7 @@ export const RegisterPage: React.FC = () => {
 
         {/* STEP 1: Registration Form */}
         {step === 'details' ? (
-          <form onSubmit={handleRequestOtp} className="space-y-3.5">
+          <form onSubmit={handleRegister} className="space-y-3.5">
             <div>
               <label className="block text-xs font-bold text-charcoal-700 uppercase tracking-wider mb-1">
                 Full Name *
@@ -179,7 +166,7 @@ export const RegisterPage: React.FC = () => {
 
             <div>
               <label className="block text-xs font-bold text-charcoal-700 uppercase tracking-wider mb-1">
-                Email Address (For Verification OTP) *
+                Email Address (For Account Verification) *
               </label>
               <div className="relative">
                 <input
@@ -241,62 +228,69 @@ export const RegisterPage: React.FC = () => {
               disabled={isSubmitting}
               className="w-full mt-3 py-3.5 rounded-full bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-charcoal-950 font-bold text-xs uppercase tracking-wider shadow-gold-glow flex items-center justify-center gap-2 transition-all disabled:opacity-50"
             >
-              <span>{isSubmitting ? 'Sending Verification Code...' : 'Get Email OTP'}</span>
+              <span>{isSubmitting ? 'Creating Account...' : 'Create Account & Verify'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
         ) : (
-          /* STEP 2: OTP Verification Form */
-          <form onSubmit={handleVerifyOtp} className="space-y-5">
-            <div>
-              <label className="block text-xs font-bold text-charcoal-700 uppercase tracking-wider mb-2 text-center">
-                Enter 6-Digit Code from your Email
-              </label>
-              <input
-                type="text"
-                required
-                maxLength={6}
-                autoFocus
-                placeholder="• • • • • •"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                className="w-full px-4 py-3.5 text-center font-mono text-2xl tracking-[0.4em] font-bold rounded-2xl border-2 border-gold-400 bg-ivory-50 text-charcoal-950 focus:outline-none focus:ring-2 focus:ring-gold-500/30"
-              />
+          /* STEP 2: Email Confirmation Sent Notice */
+          <div className="space-y-6 text-center animate-fade-in">
+            <div className="w-16 h-16 rounded-full bg-gold-100 border border-gold-300 flex items-center justify-center mx-auto text-gold-700">
+              <MailCheck className="w-8 h-8" />
             </div>
 
-            <button
-              type="submit"
-              disabled={isSubmitting || otp.length < 6}
-              className="w-full py-3.5 rounded-full bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-charcoal-950 font-bold text-xs uppercase tracking-wider shadow-gold-glow flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-            >
-              <CheckCircle className="w-4 h-4" />
-              <span>{isSubmitting ? 'Verifying...' : 'Verify OTP & Create Account'}</span>
-            </button>
-
-            <div className="flex items-center justify-between text-xs text-charcoal-600 pt-2 border-t border-ivory-200">
-              <button
-                type="button"
-                onClick={() => setStep('details')}
-                className="flex items-center gap-1 font-semibold text-charcoal-600 hover:text-charcoal-950"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Edit details</span>
-              </button>
-
-              <button
-                type="button"
-                disabled={resendTimer > 0 || isSubmitting}
-                onClick={handleResendOtp}
-                className={`font-semibold ${
-                  resendTimer > 0 
-                    ? 'text-charcoal-400 cursor-not-allowed' 
-                    : 'text-gold-800 hover:underline cursor-pointer'
-                }`}
-              >
-                {resendTimer > 0 ? `Resend code in ${resendTimer}s` : 'Resend OTP'}
-              </button>
+            <div className="space-y-2">
+              <h3 className="font-serif text-xl font-bold text-charcoal-900">
+                Verification Email Sent!
+              </h3>
+              <p className="text-xs text-charcoal-600 leading-relaxed px-2">
+                We sent a confirmation link to <strong className="text-charcoal-900 font-semibold">{email}</strong>. Please open your email and click <strong className="text-gold-800">"Confirm email address"</strong> to activate your account.
+              </p>
             </div>
-          </form>
+
+            <div className="p-4 rounded-2xl bg-ivory-100 border border-gold-200 text-xs text-charcoal-600 text-left space-y-1.5">
+              <p className="font-bold text-charcoal-900">Next Steps:</p>
+              <p>1. Open your email inbox (or Spam folder).</p>
+              <p>2. Click the <strong>Confirm email address</strong> button.</p>
+              <p>3. You will be automatically signed in!</p>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <button
+                type="button"
+                disabled={checkingSession}
+                onClick={handleCheckConfirmed}
+                className="w-full py-3.5 rounded-full bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-charcoal-950 font-bold text-xs uppercase tracking-wider shadow-gold-glow flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+              >
+                <CheckCircle className="w-4 h-4" />
+                <span>{checkingSession ? 'Checking...' : "I've Clicked The Link"}</span>
+              </button>
+
+              <div className="flex items-center justify-between text-xs text-charcoal-600 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setStep('details')}
+                  className="flex items-center gap-1 font-semibold text-charcoal-600 hover:text-charcoal-950"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Edit details</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={resendTimer > 0 || isSubmitting}
+                  onClick={handleResend}
+                  className={`font-semibold ${
+                    resendTimer > 0 
+                      ? 'text-charcoal-400 cursor-not-allowed' 
+                      : 'text-gold-800 hover:underline cursor-pointer'
+                  }`}
+                >
+                  {resendTimer > 0 ? `Resend email in ${resendTimer}s` : 'Resend Email'}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         <div className="text-center pt-2 border-t border-ivory-200 text-xs text-charcoal-600">
