@@ -227,11 +227,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [siteSettings, setSiteSettings] = useState<SiteSettings>(INITIAL_SITE_SETTINGS);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(() => {
+    const saved = localStorage.getItem('sms_site_settings');
+    return saved ? JSON.parse(saved) : INITIAL_SITE_SETTINGS;
+  });
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Sync to localStorage
+  useEffect(() => { localStorage.setItem('sms_site_settings', JSON.stringify(siteSettings)); }, [siteSettings]);
   useEffect(() => { localStorage.setItem('sms_portfolio', JSON.stringify(portfolio)); }, [portfolio]);
   useEffect(() => { localStorage.setItem('sms_gallery', JSON.stringify(gallery)); }, [gallery]);
   useEffect(() => { localStorage.setItem('sms_before_after', JSON.stringify(beforeAfter)); }, [beforeAfter]);
@@ -243,6 +247,55 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => { localStorage.setItem('sms_quotes', JSON.stringify(quotes)); }, [quotes]);
   useEffect(() => { localStorage.setItem('sms_events', JSON.stringify(events)); }, [events]);
   useEffect(() => { localStorage.setItem('sms_saved_designs', JSON.stringify(savedDesigns)); }, [savedDesigns]);
+
+  // Load site settings dynamically from Supabase database & listen for live changes
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
+
+    const loadSiteSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('site_settings')
+          .select('key, value')
+          .eq('key', 'general_settings')
+          .maybeSingle();
+
+        if (!error && data?.value) {
+          setSiteSettings(prev => ({
+            ...prev,
+            ...data.value,
+          }));
+          localStorage.setItem('sms_site_settings', JSON.stringify({
+            ...INITIAL_SITE_SETTINGS,
+            ...data.value,
+          }));
+        }
+      } catch (err) {
+        console.warn('Could not fetch remote site settings, using cached values:', err);
+      }
+    };
+
+    loadSiteSettings();
+
+    // Subscribe to live settings updates across all devices
+    const channel = supabase
+      .channel('public:site_settings')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'site_settings' },
+        (payload: any) => {
+          if (payload.new && payload.new.key === 'general_settings' && payload.new.value) {
+            setSiteSettings(prev => ({ ...prev, ...payload.new.value }));
+            localStorage.setItem('sms_site_settings', JSON.stringify(payload.new.value));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Image Processing & Compression Helper (Supports phone camera capture)
   const processAndUploadImage = async (file: File, bucket: string = 'portfolio'): Promise<string> => {
@@ -529,7 +582,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Site Settings
   const updateSiteSettings = async (updates: Partial<SiteSettings>) => {
-    setSiteSettings(prev => ({ ...prev, ...updates }));
+    const updated = { ...siteSettings, ...updates };
+    setSiteSettings(updated);
+    localStorage.setItem('sms_site_settings', JSON.stringify(updated));
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('site_settings').upsert({
+          key: 'general_settings',
+          value: updated,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.error('Failed to sync site_settings with Supabase:', err);
+      }
+    }
   };
 
   return (
