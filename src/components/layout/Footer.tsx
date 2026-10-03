@@ -61,10 +61,10 @@ export const Footer: React.FC = () => {
         </div>
 
         {/* MAIN FOOTER GRID */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 py-12">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 sm:gap-8 py-12">
           
-          {/* Col 1: Event Categories */}
-          <div className="col-span-2 sm:col-span-1">
+          {/* Col 1: Celebration Types */}
+          <div className="col-span-1">
             <h4 className="font-serif text-base text-gold-300 font-semibold mb-4 tracking-wider uppercase text-xs">
               Celebration Types
             </h4>
@@ -87,8 +87,25 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Col 2: Styles & Links */}
-          <div>
+          {/* Col 2: Service Areas (Directly beside Celebration Types on mobile) */}
+          <div className="col-span-1">
+            <h4 className="font-serif text-base text-gold-300 font-semibold mb-4 tracking-wider uppercase text-xs">
+              Service Areas
+            </h4>
+            <p className="text-xs text-charcoal-400 leading-relaxed mb-2.5">
+              Serving Telangana & AP:
+            </p>
+            <div className="flex flex-wrap gap-1.5 text-[11px] text-charcoal-300">
+              {['Hyderabad', 'Warangal', 'Vijayawada', 'Guntur', 'Khammam', 'Karimnagar', 'Nizamabad', 'Visakhapatnam', 'Secunderabad'].map((area) => (
+                <span key={area} className="px-2 py-0.5 rounded bg-charcoal-900 border border-charcoal-800">
+                  {area}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Col 3: Explore & Plan */}
+          <div className="col-span-1">
             <h4 className="font-serif text-base text-gold-300 font-semibold mb-4 tracking-wider uppercase text-xs">
               Explore & Plan
             </h4>
@@ -98,23 +115,6 @@ export const Footer: React.FC = () => {
               <li><Link to="/about" className="hover:text-gold-400 transition-colors">About Our Studio</Link></li>
               <li><Link to="/plan-event" className="hover:text-gold-400 transition-colors">Event Planner</Link></li>
             </ul>
-          </div>
-
-          {/* Col 3: Service Locations */}
-          <div>
-            <h4 className="font-serif text-base text-gold-300 font-semibold mb-4 tracking-wider uppercase text-xs">
-              Service Areas
-            </h4>
-            <p className="text-xs text-charcoal-400 leading-relaxed mb-3">
-              Serving premier celebrations across Telangana & Andhra Pradesh:
-            </p>
-            <div className="flex flex-wrap gap-1.5 text-[11px] text-charcoal-300">
-              {['Hyderabad', 'Warangal', 'Vijayawada', 'Guntur', 'Khammam', 'Karimnagar', 'Nizamabad', 'Visakhapatnam', 'Secunderabad'].map((area) => (
-                <span key={area} className="px-2 py-0.5 rounded bg-charcoal-900 border border-charcoal-800">
-                  {area}
-                </span>
-              ))}
-            </div>
           </div>
 
           {/* Col 4: Contact Info */}
