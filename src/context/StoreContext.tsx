@@ -273,6 +273,45 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       } catch (err) {
         console.warn('Could not fetch remote site settings, using cached values:', err);
       }
+
+      // Fetch dynamic portfolio projects from Supabase
+      try {
+        const { data: dbPortfolio } = await supabase
+          .from('portfolio')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (dbPortfolio && dbPortfolio.length > 0) {
+          setPortfolio(prev => {
+            const combined = [...dbPortfolio, ...INITIAL_PORTFOLIO.filter(p => !dbPortfolio.some(dp => dp.id === p.id || dp.slug === p.slug))];
+            return combined;
+          });
+        }
+      } catch (err) {}
+
+      // Fetch dynamic gallery items from Supabase
+      try {
+        const { data: dbGallery } = await supabase
+          .from('gallery')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (dbGallery && dbGallery.length > 0) {
+          setGallery(dbGallery);
+        }
+      } catch (err) {}
+
+      // Fetch dynamic before/after items from Supabase
+      try {
+        const { data: dbBeforeAfter } = await supabase
+          .from('before_after')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (dbBeforeAfter && dbBeforeAfter.length > 0) {
+          setBeforeAfter(dbBeforeAfter);
+        }
+      } catch (err) {}
     };
 
     loadSiteSettings();
@@ -297,13 +336,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   }, []);
 
-  // Image Processing & Compression Helper (Supports phone camera capture)
+  // Image Processing & Compression Helper (Supports phone camera & Supabase Storage upload)
   const processAndUploadImage = async (file: File, bucket: string = 'portfolio'): Promise<string> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = new Image();
-        img.onload = () => {
+        img.onload = async () => {
           // Resize image on canvas to max 1600px width/height for optimal web performance
           const canvas = document.createElement('canvas');
           let width = img.width;
@@ -326,6 +365,35 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           if (ctx) {
             ctx.drawImage(img, 0, 0, width, height);
             const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.85);
+
+            // Attempt direct upload to Supabase Storage if configured
+            if (isSupabaseConfigured && supabase) {
+              try {
+                canvas.toBlob(async (blob) => {
+                  if (blob) {
+                    const ext = 'jpg';
+                    const fileName = `${bucket}/${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${ext}`;
+                    const { data: uploadData, error: uploadErr } = await supabase.storage
+                      .from(bucket)
+                      .upload(fileName, blob, { contentType: 'image/jpeg', upsert: true });
+
+                    if (!uploadErr && uploadData) {
+                      const { data: publicUrlData } = supabase.storage
+                        .from(bucket)
+                        .getPublicUrl(fileName);
+                      if (publicUrlData?.publicUrl) {
+                        return resolve(publicUrlData.publicUrl);
+                      }
+                    }
+                  }
+                  resolve(optimizedBase64);
+                }, 'image/jpeg', 0.85);
+                return;
+              } catch (err) {
+                console.warn('Storage upload fallback to optimized Base64:', err);
+              }
+            }
+
             resolve(optimizedBase64);
           } else {
             resolve(e.target?.result as string);
@@ -393,6 +461,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const deletePortfolioProject = async (id: string) => {
     setPortfolio(prev => prev.filter(p => p.id !== id));
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('portfolio').delete().eq('id', id);
+      } catch (err) {}
+    }
   };
 
   // Gallery Actions
@@ -403,11 +476,34 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       created_at: new Date().toISOString(),
     };
     setGallery(prev => [newItem, ...prev]);
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('gallery').insert({
+          title: newItem.title,
+          image_url: newItem.image_url,
+          event_type: newItem.event_type,
+          style: newItem.style,
+          tags: newItem.tags,
+          is_published: newItem.is_published,
+          is_featured: newItem.is_featured,
+          sort_order: newItem.sort_order,
+        });
+      } catch (err) {
+        console.error('Supabase gallery insert error:', err);
+      }
+    }
+
     return newItem;
   };
 
   const deleteGalleryItem = async (id: string) => {
     setGallery(prev => prev.filter(g => g.id !== id));
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('gallery').delete().eq('id', id);
+      } catch (err) {}
+    }
   };
 
   // Before/After Actions
@@ -418,6 +514,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       created_at: new Date().toISOString(),
     };
     setBeforeAfter(prev => [newItem, ...prev]);
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('before_after').insert({
+          title: newItem.title,
+          event_type: newItem.event_type,
+          venue_location: newItem.venue_location,
+          description: newItem.description,
+          before_image: newItem.before_image,
+          after_image: newItem.after_image,
+          is_published: newItem.is_published,
+          sort_order: newItem.sort_order,
+        });
+      } catch (err) {
+        console.error('Supabase before_after insert error:', err);
+      }
+    }
+
     return newItem;
   };
 
@@ -427,6 +541,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const deleteBeforeAfter = async (id: string) => {
     setBeforeAfter(prev => prev.filter(item => item.id !== id));
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('before_after').delete().eq('id', id);
+      } catch (err) {}
+    }
   };
 
   // Services Actions
