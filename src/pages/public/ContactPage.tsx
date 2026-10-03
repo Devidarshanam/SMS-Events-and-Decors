@@ -111,7 +111,7 @@ export const ContactPage: React.FC = () => {
             {/* Quick Action Buttons */}
             <div className="grid grid-cols-2 gap-3 pt-2">
               <a
-                href={`tel:${siteSettings.contact_phone}`}
+                href="tel:+917995644101"
                 className="py-3 px-4 rounded-xl bg-charcoal-900 text-ivory-50 text-xs font-bold uppercase tracking-wider text-center flex items-center justify-center gap-1.5 shadow-md hover:bg-gold-600 transition-colors"
               >
                 <Phone className="w-4 h-4" />

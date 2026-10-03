@@ -5,7 +5,7 @@ import { useStore } from '../../context/StoreContext';
 
 export const MobileStickyCTA: React.FC = () => {
   const { siteSettings } = useStore();
-  const cleanNumber = (siteSettings.contact_whatsapp || '919876543210').replace(/\D/g, '');
+  const cleanNumber = (siteSettings.contact_whatsapp || '917995644101').replace(/\D/g, '');
   const waUrl = `https://wa.me/${cleanNumber}?text=${encodeURIComponent("Hi SMS Events & Decors, I want to discuss decoration for my upcoming event in Hyderabad.")}`;
 
   return (
@@ -24,7 +24,7 @@ export const MobileStickyCTA: React.FC = () => {
 
         {/* Call */}
         <a
-          href={`tel:${siteSettings.contact_phone}`}
+          href="tel:+917995644101"
           className="flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl bg-charcoal-800 active:bg-charcoal-700 text-ivory-100 font-semibold text-xs border border-charcoal-700 transition-colors"
         >
           <PhoneCall className="w-4 h-4 text-gold-400" />

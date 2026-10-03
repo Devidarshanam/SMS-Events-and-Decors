@@ -104,7 +104,7 @@ export const MyEventsPage: React.FC = () => {
               <div className="pt-3 border-t border-ivory-200 flex items-center justify-between text-xs">
                 <span className="text-charcoal-500">Need to modify arrangements?</span>
                 <a
-                  href={`tel:${siteSettings.contact_phone}`}
+                  href="tel:+917995644101"
                   className="font-bold text-gold-800 hover:underline flex items-center gap-1"
                 >
                   <PhoneCall className="w-3.5 h-3.5" />

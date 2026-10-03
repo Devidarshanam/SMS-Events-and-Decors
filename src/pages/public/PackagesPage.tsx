@@ -103,7 +103,7 @@ export const PackagesPage: React.FC = () => {
             Use Event Planner
           </Link>
           <a
-            href={`tel:${siteSettings.contact_phone}`}
+            href="tel:+917995644101"
             className="w-full sm:w-auto px-6 py-3.5 rounded-full border border-charcoal-800 text-charcoal-900 hover:bg-white font-semibold text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2"
           >
             <PhoneCall className="w-4 h-4" />
